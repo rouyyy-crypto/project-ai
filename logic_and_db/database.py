@@ -2,11 +2,10 @@ import sqlite3
 
 
 def init_db():
-    # יצירת או פתיחת חיבור לקובץ מסד הנתונים בתיקייה הנוכחית
     conn = sqlite3.connect('band_data.db')
     cursor = conn.cursor()
 
-    # 1. יצירת טבלת נגנים (תואם בדיוק לעמודות מהאקסס)
+    # 1. טבלת נגנים
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS musicians (
         id_musician INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,8 +19,7 @@ def init_db():
     )
     ''')
 
-    # 2. יצירת טבלת אולמות
-    # מרחק: 1 = ללא תוספת, 2 = תוספת קלאסית, 3 = תוספת קיצונית
+    # 2. טבלת אולמות
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS venues (
         id_venue INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,10 +30,34 @@ def init_db():
     )
     ''')
 
-    # שמירת השינויים (Commit) וסגירת החיבור
+    # 3. יומן תאריכים תפוסים (לצורך סינון זמינות)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS booked_dates (
+        id_booked INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_date TEXT NOT NULL UNIQUE,
+        description TEXT
+    )
+    ''')
+
+    # 4. טבלת לידים נכנסים (הלב של ה-MVP)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS leads (
+        id_lead INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_name TEXT,
+        client_phone TEXT,
+        event_date TEXT,
+        event_type TEXT,
+        venue_name TEXT,
+        requested_instruments TEXT,
+        quoted_price REAL,
+        chat_transcript TEXT,
+        status TEXT DEFAULT 'ממתין לאישור'
+    )
+    ''')
+
     conn.commit()
     conn.close()
-    print("הטבלאות musicians ו-venues נוצרו בהצלחה לפי האפיון המעודכן!")
+    print("כל 4 הטבלאות (נגנים, אולמות, יומן תפוס ולידים) אותחלו בהצלחה!")
 
 if __name__ == '__main__':
     init_db()
