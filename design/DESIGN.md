@@ -122,3 +122,163 @@ When the AI Agent (`agents/orchestrator.py`) finishes extracting mandatory detai
   }
 }
 ```
+---
+
+## 7. End-to-End & Edge-Case Scenarios (תרחישים)
+
+### Scenario 1: Happy Path – Valid Lead & Quote Approval
+1. **Inquiry:** Engaged couple opens the Customer Chat UI and asks about availability and musical styles for a wedding.
+2. **RAG Q&A:** Couple asks technical or artistic questions (e.g., repertoire, lineup options, sound/lighting/power specs). The agent answers strictly from the band's local knowledge base documents.
+3. **Entity Extraction:** Through multi-turn conversation in Hebrew, the agent collects mandatory parameters: `date`, `location`, `guests_count`, `event_type`, `musical_style`, and `band_size`.
+4. **Deterministic Check & Pricing:** Once mandatory parameters are gathered, the agent calls `check_availability_and_rules` and the deterministic pricing logic. Both pass.
+5. **Client Quote & Approval:** The agent shows a summary of the event specs and an estimated price range (without committing to a final fixed price) and asks for confirmation to send the lead to the band manager.
+6. **Lead Persistence:** Upon confirmation, the lead is saved to the database with its status, transcript, and exact cost breakdown for the Band Manager CRM Dashboard.
+
+### Scenario 2: Disqualification – Date Already Booked
+1. Couple provides event details for a date that is already booked in the local calendar database.
+2. `check_availability_and_rules` returns `is_valid: false` with a disqualification reason for the booked date.
+3. Agent politely declines the date and explains why, without committing to a quote.
+
+### Scenario 3: Disqualification – Rule / Threshold Violation
+1. Couple submits parameters that violate configured rules (e.g., outside geographic distance limits, unsupported event type, or below minimum guests/budget).
+2. `check_availability_and_rules` returns `is_valid: false` with the specific disqualification reason.
+3. Agent politely explains the limitation and records the disqualified lead in the database.
+
+### Scenario 4: Mid-Conversation Parameter Change (Edge Case)
+1. Couple initially provides valid details (such as a date and guest count) and receives an initial price range.
+2. Before confirming, the couple changes the date or updates `guests_count` mid-conversation.
+3. Agent re-runs `check_availability_and_rules` and pricing calculation with the updated values before presenting any updated range.
+
+### Scenario 5: Out-of-Scope / Hallucination Guardrail
+1. Couple asks for a song/capability not in the band's knowledge base or asks for a fixed/discounted price directly.
+2. Agent does not invent songs/capabilities and does not state a price without deterministic calculation.
+
+---
+
+## 8. Interface Definitions (הגדרות ממשקים)
+
+These interfaces define the expected inputs and outputs for the deterministic functions called by the AI orchestration layer (`agents/`) and implemented in the backend/database layer (`logic/`).
+
+### 8.1 Availability & Rules Check Interface
+- **Function / Tool Name:** `check_availability_and_rules`
+- **Purpose:** Checks whether the requested event date is available in the local database and evaluates threshold/eligibility rules.
+- **Input Parameters:**
+  - `date` (`string`, `YYYY-MM-DD`)
+  - `location` (`string`)
+  - `guests_count` (`integer`)
+  - `event_type` (`string`)
+- **Return Payload:**
+  - `is_valid` (`boolean`)
+  - `disqualification_reason` (`string | null`)
+
+### 8.2 Deterministic Pricing Interface
+- **Function / Tool Name:** `calculate_quote` (or deterministic pricing entry point in `logic/`)
+- **Purpose:** Computes an estimated price range for the customer view and an exact cost breakdown for the band manager view based on deterministic rules and pricing data.
+- **Input Parameters:**
+  - `date` (`string`, `YYYY-MM-DD`)
+  - `location` (`string`)
+  - `guests_count` (`integer`)
+  - `musical_style` (`string`)
+  - `band_size` (`integer`)
+  - `sound_required` (`boolean`)
+- **Return Payload:**
+  - `customer_price_range`: `{ "min_price": number, "max_price": number }`
+  - `manager_exact_breakdown`: `{ "base_musicians_cost": number, "travel_surcharge": number, "sound_equipment_cost": number, "seasonal_adjustment": number, "total_exact_price": number }`
+
+### 8.3 Lead Persistence Interface
+- **Function / Tool Name:** `save_lead` (or database persistence function in `logic/`)
+- **Purpose:** Saves qualified ("cooked") leads upon user confirmation—or disqualified leads when rejected by rules—along with status, conversation transcript, and pricing/disqualification details for the CRM dashboard.
+- **Input Parameters:**
+  - `client_name` (`string`)
+  - `lead_input` (`object`, matching Section 6)
+  - `status` (`string`, e.g., `"qualified"` / `"disqualified"`)
+  - `transcript` (`string | list`)
+  - `backend_response` (`object`, matching Section 6)
+- **Return Payload:**
+  - `saved` (`boolean`)
+  - `lead_id` (`integer | string | null`)
+
+  ---
+
+## 9. Mock Functions (פונקציות דמה)
+
+Placeholder implementations matching the Section 8 interfaces so agent and UI flows can be tested against predictable mock data before final backend/database logic is complete[cite: 2, 3, 4].
+
+```python
+from typing import Any, Dict, List, Optional
+
+
+def check_availability_and_rules(
+    date: str,
+    location: str,
+    guests_count: int,
+    event_type: str,
+) -> Dict[str, Any]:
+    """Mock availability and threshold/rule check."""
+    booked_dates = {"2027-05-20", "2027-06-10"}
+
+    if date in booked_dates:
+        return {
+            "is_valid": False,
+            "disqualification_reason": "Requested date is already booked.",
+        }
+
+    if guests_count < 100:
+        return {
+            "is_valid": False,
+            "disqualification_reason": "Guest count is below minimum threshold.",
+        }
+
+    return {
+        "is_valid": True,
+        "disqualification_reason": None,
+    }
+
+
+def calculate_quote(
+    date: str,
+    location: str,
+    guests_count: int,
+    musical_style: str,
+    band_size: int,
+    sound_required: bool,
+) -> Dict[str, Any]:
+    """Mock deterministic pricing calculation returning a customer range and manager breakdown."""
+    base_musicians_cost = band_size * 2000
+    travel_surcharge = 0 if location.strip().lower() in {"jerusalem", "ירושלים"} else 800
+    sound_equipment_cost = 2200 if sound_required else 0
+    seasonal_adjustment = 0
+    total_exact_price = (
+        base_musicians_cost
+        + travel_surcharge
+        + sound_equipment_cost
+        + seasonal_adjustment
+    )
+
+    return {
+        "customer_price_range": {
+            "min_price": total_exact_price,
+            "max_price": total_exact_price + 1500,
+        },
+        "manager_exact_breakdown": {
+            "base_musicians_cost": base_musicians_cost,
+            "travel_surcharge": travel_surcharge,
+            "sound_equipment_cost": sound_equipment_cost,
+            "seasonal_adjustment": seasonal_adjustment,
+            "total_exact_price": total_exact_price,
+        },
+    }
+
+
+def save_lead(
+    client_name: str,
+    lead_input: Dict[str, Any],
+    status: str,
+    transcript: str | List[Dict[str, str]],
+    backend_response: Dict[str, Any],
+) -> Dict[str, Optional[Any]]:
+    """Mock lead persistence returning a dummy saved status and lead ID."""
+    return {
+        "saved": True,
+        "lead_id": 101,
+    }
