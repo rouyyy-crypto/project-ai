@@ -16,12 +16,12 @@ Functions:
 """
 
 import json
-from pathlib import Path
 import sqlite3
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any
 
 
-def _get_db_path(custom_path: Optional[str] = None) -> Path:
+def _get_db_path(custom_path: str | None = None) -> Path:
     """Resolve database path relative to project root or use custom path."""
     if custom_path:
         return Path(custom_path)
@@ -38,7 +38,7 @@ def _get_config_path() -> Path:
     return Path(__file__).resolve().parent / "rules_config.json"
 
 
-def check_date_availability(date: str, db_path: Optional[str] = None) -> bool:
+def check_date_availability(date: str, db_path: str | None = None) -> bool:
     """Check if a specific date (YYYY-MM-DD) is free in the database.
 
     Returns True if available, False if already booked.
@@ -64,11 +64,11 @@ def check_date_availability(date: str, db_path: Optional[str] = None) -> bool:
 
 def check_availability_and_rules(
     date: str,
-    location: Optional[str] = None,
-    guests_count: Optional[int] = None,
-    event_type: Optional[str] = None,
-    db_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    location: str | None = None,
+    guests_count: int | None = None,
+    event_type: str | None = None,
+    db_path: str | None = None,
+) -> dict[str, Any]:
     """Verify calendar availability and threshold rules.
 
     Parameters
