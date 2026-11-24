@@ -1,0 +1,36 @@
+{
+  "_description": "Declarative rules configuration and base pricing parameters. Externalizes business rules to avoid hard-coded values.",
+  "thresholds": {
+    "min_guests": 50,
+    "max_guests": 1500,
+    "supported_event_types": [
+      "חתונה",
+      "wedding",
+      "בר מצווה",
+      "bar_mitzvah",
+      "בת מצווה",
+      "bat_mitzvah",
+      "אירוע פרטי",
+      "private_event",
+      "אירוע חברה",
+      "corporate_event"
+    ],
+    "max_travel_distance_km": 180
+  },
+  "pricing": {
+    "base_rate_per_musician": 1200.0,
+    "sound_system_base_fee": 2200.0,
+    "sound_engineer_fee": 1000.0,
+    "travel_tiers": {
+      "tier_1_local": 0.0,
+      "tier_2_central": 400.0,
+      "tier_3_remote": 800.0
+    },
+    "seasonal_adjustments": {
+      "peak_summer_multiplier": 1.15,
+      "winter_discount_multiplier": 0.90,
+      "standard_multiplier": 1.00
+    },
+    "customer_range_variance_percent": 0.15
+  }
+}
