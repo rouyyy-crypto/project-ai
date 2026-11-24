@@ -8,6 +8,16 @@ def seed_data():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    # איפוס וניקוי מוקדם של הטבלאות למניעת כפילויות בהרצות חוזרות (Idempotent Seed)
+    cursor.execute('DELETE FROM musicians')
+    cursor.execute('DELETE FROM venues')
+    cursor.execute('DELETE FROM booked_dates')
+    cursor.execute('DELETE FROM leads')
+    try:
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name IN ('musicians', 'venues', 'booked_dates', 'leads')")
+    except sqlite3.OperationalError:
+        pass  # sqlite_sequence might not exist if tables were never populated
+
     # 1. הזרקת נתוני הנגנים (חולץ מתמונות מסד הנתונים)
     musicians_data = [
         ('אמיתי פרל', '050-1234567', 'רמת גן', 'קלרינט, סקסופון', 1200.00, 'קבוע', ''),
