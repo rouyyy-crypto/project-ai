@@ -1,8 +1,12 @@
+import os
+from pathlib import Path
 import sqlite3
+
+DB_PATH = Path(__file__).resolve().parent.parent / "band_data.db"
 
 
 def seed_data():
-    conn = sqlite3.connect('band_data.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # 1. הזרקת נתוני הנגנים (חולץ מתמונות מסד הנתונים)
@@ -84,10 +88,29 @@ def seed_data():
     ''', venues_data)
 
     # 3. הזרקת יומן תפוס ולידים לדוגמה לבדיקות המערכת
+    booked_dates_data = [
+        ('2026-12-01', 'חתונה בירושלים'),
+        ('2027-05-20', 'חתונה באולמי האחוזה - תפוס לבדיקות תרחיש 1'),
+        ('2027-06-10', 'חתונה בירושלים - הרמוניה'),
+        ('2027-06-17', 'חתונה בנס ציונה - גאיה'),
+        ('2027-06-24', 'חתונה בשורש - גן אירועים'),
+        ('2027-07-01', 'אירוע חברה - תל אביב'),
+        ('2027-07-08', 'חתונה בעמק חפר'),
+        ('2027-08-12', 'חתונה במודיעין - קסאנאדו'),
+        ('2027-08-19', 'חתונה בקיסריה'),
+        ('2027-09-02', 'חתונה בירושלים - וולדורף'),
+        ('2027-09-09', 'בר מצווה ברעננה'),
+        ('2027-09-16', 'חתונה בשרון - גן הפקאן'),
+        ('2027-10-14', 'חתונה במזכרת בתיה'),
+        ('2027-10-21', 'חתונה בחיפה'),
+        ('2027-11-04', 'חתונה בירושלים - בית שמואל'),
+        ('2027-11-18', 'חתונה בגבעת ברנר'),
+        ('2027-12-02', 'חתונה בפתח תקווה')
+    ]
     cursor.executemany('''
         INSERT OR IGNORE INTO booked_dates (event_date, description)
         VALUES (?, ?)
-    ''', [('2026-12-01', 'חתונה בירושלים')])
+    ''', booked_dates_data)
 
     cursor.executemany('''
         INSERT INTO leads (client_name, client_phone, event_date, event_type, venue_name, requested_instruments, quoted_price, chat_transcript, status)
