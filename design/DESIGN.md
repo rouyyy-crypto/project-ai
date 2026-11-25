@@ -11,8 +11,8 @@ The system is a hybrid AI pre-sales and booking agent tailored exclusively for *
 
 * **Core Engineering Philosophy:** Combine **Generative AI** (for natural Hebrew conversation, entity extraction, and document-grounded Q&A) with **Deterministic Code** (for calendar availability checks, rule-based lead filtering, and exact mathematical pricing—eliminating LLM hallucinations).
 * **Target Users:**
-  1. **Engaged Couples / Event Planners:** Interact via the Customer Chat UI to inquire about the band, specify event needs, and receive an initial specification & price range.
-  2. **Band Managers:** Interact via the Internal CRM Dashboard to review "cooked" (qualified) leads, view conversation transcripts, inspect exact cost breakdowns, and approve final quotes.
+  1. **Engaged Couples / Event Planners:** Interact via a direct-link Customer Chat UI (`/`) in a WhatsApp-style conversational flow (with optional quick-reply starter buttons for initial options, never blocking free-text questions) to inquire about the band, specify event needs, and receive an initial specification & price range.
+  2. **Band Managers:** Interact via the dedicated Internal CRM Dashboard (`/manager`) to view status statistics cards, filter leads by status (**Ready / מוכנות**, **Closed / סגורות**, **Cancelled / מבוטלות**), inspect conversation summaries & transcripts alongside both the customer-facing price range and the exact deterministic cost breakdown, and approve/close or cancel leads.
 
 ---
 
@@ -53,7 +53,7 @@ The codebase is divided into 3 decoupled modules to prevent merge conflicts and 
 | :--- | :--- | :--- | :--- |
 | **1. AI & RAG Engine**<br>(`agents/`) | Conversational flow, entity extraction, knowledge retrieval, and tool invocation. | • **Conversational LLM:** For Hebrew NLU, persona adherence, and structured entity extraction.<br>• **Multi-Turn Memory Management:** State tracking across conversation turns.<br>• **Semantic Search / Vector Store (RAG):** Local embedding & retrieval over band knowledge docs.<br>• **Function / Tool Calling:** Structured interface to trigger deterministic backend functions. | • Must enforce strict grounding in `data/` documents.<br>• Must never calculate prices internally; must delegate to `logic/` tools. |
 | **2. Business Logic & Data**<br>(`logic/`) | Deterministic rules evaluation, availability checking, pricing math, and persistence. | • **Relational Database Engine:** Lightweight local SQL storage for calendar dates, pricing tables, and leads.<br>• **Externalized Rules Configuration:** Declarative config file (JSON) for flexible threshold/disqualification rules.<br>• **Deterministic Calculation Engine:** Pure mathematical functions for travel, lineup, sound, and seasonal pricing. | • Must return structured, predictable outputs (e.g., pass/fail + reason, price range + exact breakdown).<br>• Must handle edge cases (e.g., mid-conversation date/guest updates). |
-| **3. Frontend & Showcase**<br>(`app.py`) | User interfaces for both customer interaction and manager lead review. | • **Python Web UI Framework:** Rapid dual-tab interface.<br>• **Session State Management:** Preserving chat history per user session.<br>• **Tabular Data Viewer:** Displaying live database records (leads, statuses, cost breakdowns) in the manager tab. | • Must provide a Split/Tabbed view: Tab 1 = Customer Chat, Tab 2 = Band Manager CRM Dashboard.<br>• Must support zero-cost cloud deployment. |
+| **3. Frontend & Showcase**<br>(`app.py`) | User interfaces for both customer interaction and manager lead review. | • **Python Web UI Framework:** Gradio multi-route app (`/` for direct Customer Chat link, `/manager` for Band Manager CRM Dashboard).<br>• **Session State Management:** Preserving chat history per user session.<br>• **Tabular Data Viewer & KPI Summary:** Displaying summary statistics cards by lead status, live database records, conversation summary/transcript, customer price range, and manager exact cost breakdown. | • Must expose a direct shareable Customer Chat route (`/`) with WhatsApp-style RTL chat and optional quick-reply starter buttons (no mandatory pre-chat form).<br>• Must expose a dedicated `/manager` CRM Dashboard route displaying **מוכנות** (qualified/pending approval), **סגורות** (closed by manager), and **מבוטלות** (disqualified) leads, with a clean extension hook reserved for future **בתהליך** (in-progress) conversation persistence once approved by the team.<br>• Must support zero-cost cloud deployment. |
 
 ---
 
@@ -63,7 +63,7 @@ All new files and refactoring must strictly adhere to this directory layout:
 
 ```text
 wedding-band-ai-agent/
-├── app.py                  # Entry point: Dual-tab UI (Customer Chat + Band Manager CRM Dashboard)
+├── app.py                  # Entry point: Gradio multi-route UI (/ Customer Chat + /manager CRM Dashboard)
 ├── .env                    # API keys (Excluded from Git via .gitignore)
 ├── requirements.txt        # Python dependencies
 ├── README.md               # Project documentation, architecture diagram, and business overview
@@ -197,6 +197,9 @@ These interfaces define the expected inputs and outputs for the deterministic fu
 - **Return Payload:**
   - `saved` (`boolean`)
   - `lead_id` (`integer | string | null`)
+- **CRM Status Lifecycle:**
+  - Active MVP statuses displayed in `/manager`: `ממתין לאישור` (מוכנות / `qualified`), `סגורה` (`closed` — finalized by manager), `מבוטלת` (`disqualified` — rejected by rules/booked date).
+  - Reserved future hook: `בתהליך` (`in_progress`) is defined in `logic/database.py` behind `ENABLE_IN_PROGRESS_TRACKING = False` and remains hidden until the team approves live in-progress session persistence.
 
   ---
 
