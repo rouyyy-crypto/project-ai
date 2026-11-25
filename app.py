@@ -466,13 +466,37 @@ def _compute_quote(
         )
 
 
+def _parse_and_normalize_date(text: str) -> str | None:
+    """Extract and normalize dates in YYYY-MM-DD or DD-MM-YYYY (with - / .) to YYYY-MM-DD.
+
+    Supports Hebrew prefixes like ב-20-05-2027, ל-20/05/2027 or free-standing dates.
+    """
+    # Match ISO format: YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+    iso_match = re.search(r"(?:^|[^\d])(20\d{2})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])(?:$|[^\d])", text)
+    if iso_match:
+        year, month, day = iso_match.groups()
+        return f"{year}-{month}-{day}"
+
+    # Match European/Israeli format: DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+    dmy_match = re.search(r"(?:^|[^\d])(0[1-9]|[12]\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](20\d{2})(?:$|[^\d])", text)
+    if dmy_match:
+        day, month, year = dmy_match.groups()
+        return f"{year}-{month}-{day}"
+
+    return None
+
+
 def _extract_state_updates(text: str, state: dict[str, Any]) -> bool:
     """Extract simple event parameters from Hebrew message; returns True if quote params changed."""
     changed = False
 
-    date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", text)
-    if date_match and state["event_date"] != date_match.group(1):
-        state["event_date"] = date_match.group(1)
+    extracted_date = _parse_and_normalize_date(text)
+    if extracted_date and state["event_date"] != extracted_date:
+        state["event_date"] = extracted_date
+        state["is_valid"] = None
+        state["disqualification_reason"] = None
+        state["last_quote"] = None
+        state["lead_saved"] = False
         changed = True
 
     guests_match = re.search(r"(\d{2,4})\s*(?:אורח|אורחים|מוזמנים)", text)
