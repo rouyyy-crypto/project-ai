@@ -511,10 +511,9 @@ def _extract_state_updates(text: str, state: dict[str, Any]) -> bool:
         if state["band_size"] != 5:
             state["band_size"] = 5
             changed = True
-    elif any(k in text for k in ("6 נגנים", "שישייה", "להוסיף נגן", "להוסיף גם כינור", "נגן סולו נוסף")):
-        if state["band_size"] != 6:
-            state["band_size"] = 6
-            changed = True
+    elif any(k in text for k in ("6 נגנים", "שישייה", "להוסיף נגן", "להוסיף גם כינור", "נגן סולו נוסף")) and state["band_size"] != 6:
+        state["band_size"] = 6
+        changed = True
 
     phone_match = re.search(r"(05\d[-\s]?\d{7})", text)
     if phone_match:
